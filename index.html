@@ -71,7 +71,7 @@
   function parseCSV(text){const lines=text.trim().split(/\r?\n/),head=lines.shift().split(',');return lines.map(line=>{const a=line.split(','),o={};head.forEach((k,i)=>o[k]=a[i]);return {stock_symbol:o.stock_symbol,date:o.date,close:+o.close,adj_close:+(o.adj_close||o.close),volume:+o.volume}}).filter(r=>r.stock_symbol&&r.date&&Number.isFinite(r.adj_close))}
   function grouped(){bySymbol={};rows.forEach(r=>(bySymbol[r.stock_symbol]??=[]).push(r));allSymbols=Object.keys(bySymbol).sort()}
   function latestDate(){return rows.reduce((m,r)=>r.date>m?r.date:m,'')}
-  function periodStart(){const last=new Date(latestDate()+'T00:00:00Z'),p=$('period').value;if(p==='1y')last.setUTCFullYear(last.getUTCFullYear()-1);if(p==='5y')last.setUTCFullYear(last.getUTCFullYear()-5);return last.toISOString().slice(0,10)}
+  function periodStart(){const p=$('period').value;if(p==='all')return rows.reduce((m,r)=>r.date<m?r.date:m,'9999-12-31');const last=new Date(latestDate()+'T00:00:00Z');if(p==='1y')last.setUTCFullYear(last.getUTCFullYear()-1);if(p==='5y')last.setUTCFullYear(last.getUTCFullYear()-5);return last.toISOString().slice(0,10)}
   function monthlySeries(symbol,start){const m=new Map();for(const r of bySymbol[symbol]||[])if(r.date>=start)m.set(r.date.slice(0,7),r);return [...m.values()]}
   function setDataMessage(text,state){$('dataStatus').textContent=text;$('dataDot').className='dot '+(state||'')}
   function renderStats(){const dates=rows.map(r=>r.date).sort();$('companyCount').textContent=allSymbols.length;$('rowCount').textContent=rows.length.toLocaleString('tr-TR');$('dateRange').textContent=dates[0].slice(0,4)+'–'+dates[dates.length-1].slice(0,4);$('lastUpdated').textContent=dates[dates.length-1]}
@@ -104,3 +104,4 @@
 </script>
 </body>
 </html>
+
