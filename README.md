@@ -9,7 +9,7 @@ Kastamonu Üniversitesi Tosya Meslek Yüksekokulu Robotik ve Yapay Zeka Bölüm�
 
 [QR kodu GitHub deposunu doğrudan açsın](slides/qr-repository.png).
 
-> Arayüzü ilk kez yayınlamak için GitHub deposunda **Settings → Pages → Build and deployment → Source: GitHub Actions** seçin. `Publish GitHub Pages` iş akışı `main` dalına gelen her güncellemede sayfayı yayınlar. İlk dağıtım tamamlanınca yukarıdaki sayfa bağlantısını ve QR kodu deneyin.
+> **Yayın durumu:** Arayüz GitHub Pages üzerinde yayımlanmıştır. Sunumda kullanılacak QR kodu yukarıdaki görseli açar; depo ve tüm dosyalar için [GitHub deposu bağlantısını](https://github.com/bekiroglumuhammedenes-cyber/Emir_Berat_Enes) kullanın.
 
 ## Proje içeriği
 
@@ -38,7 +38,7 @@ Notebook'ta `DATA.csv` tarihleri gün-ay-yıl biçiminde olduğundan `dayfirst=T
 
 ## GitHub Pages
 
-Depo varsayılan dalı `main` olduğunda Actions iş akışı siteyi yayımlar. İlk etkinleştirmede depo sahibi GitHub'da **Settings → Pages** sayfasını açıp kaynak olarak **GitHub Actions**'ı seçmelidir. Yayın durumunu **Actions** sekmesinden izleyebilirsiniz.
+Site `main` dalındaki `.github/workflows/pages.yml` iş akışıyla yayımlanır. Son yayınlama iş akışı başarılıdır. Yeni bir commit, Pages sitesini günceller. İş akışı durumunu [Actions](https://github.com/bekiroglumuhammedenes-cyber/Emir_Berat_Enes/actions) sekmesinden görebilirsiniz.
 
 
 
