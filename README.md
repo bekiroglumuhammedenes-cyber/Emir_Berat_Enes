@@ -5,6 +5,9 @@ Kastamonu Üniversitesi Tosya Meslek Yüksekokulu Robotik ve Yapay Zeka Bölüm�
 **Etkileşimli arayüz:** [Big Tech Hisse Analizi](https://bekiroglumuhammedenes-cyber.github.io/Emir_Berat_Enes/)  
 **GitHub deposu:** [bekiroglumuhammedenes-cyber/Emir_Berat_Enes](https://github.com/bekiroglumuhammedenes-cyber/Emir_Berat_Enes)
 
+**Yeni proje sayfası:** [MaternalAI](https://bekiroglumuhammedenes-cyber.github.io/Emir_Berat_Enes/maternalai/)  
+**MaternalAI QR kodu:** [Görseli aç](maternalai/assets/maternalai-qr.png)
+
 ![Proje arayüzünü açan QR kod](slides/qr-code.png)
 
 [QR kodu GitHub deposunu doğrudan açsın](slides/qr-repository.png).
