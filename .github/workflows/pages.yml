@@ -4,6 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
@@ -25,7 +26,21 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: .
+          name: github-pages-${{ github.run_attempt }}
+      - name: Wait for uploaded Pages artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT: github-pages-${{ github.run_attempt }}
+        run: |
+          for attempt in {1..24}; do
+            count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=$ARTIFACT" --jq '.total_count')
+            if [ "$count" = 1 ]; then exit 0; fi
+            sleep 5
+          done
+          exit 1
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
 
