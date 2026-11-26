@@ -34,7 +34,7 @@
         <div class="stat"><span>Şirket</span><strong id="companyCount">—</strong></div><div class="stat"><span>Günlük gözlem</span><strong id="rowCount">—</strong></div><div class="stat"><span>Veri dönemi</span><strong id="dateRange">—</strong></div><div class="stat"><span>Gösterge</span><strong>Adj. Close</strong></div>
       </section>
       <section class="section" id="analiz">
-        <div class="section-head"><div><h2>Hisse performansı</h2><p>Her şirketin düzeltilmiş kapanış fiyatı seçilen dönemin başında 100'e endekslenir.</p></div><div class="controls"><div class="field"><label for="period">Dönem</label><select id="period"><option value="all">Tüm dönem</option><option value="5y">Son 5 yıl</option><option value="1y">Son 1 yıl</option></select></div></div></div>
+        <div class="section-head"><div><h2>Hisse performansı</h2><p>Her şirketin düzeltilmiş kapanış fiyatı seçilen dönemin başında 100'e endekslenir. Dönemler, tüm şirketlerde veri bulunan 29 Aralık 2022 tarihinde sona erer.</p></div><div class="controls"><div class="field"><label for="period">Dönem</label><select id="period"><option value="1d">Günlük</option><option value="1w">Haftalık</option><option value="1m">Aylık</option><option value="6m">6 aylık</option><option value="1y" selected>1 yıllık</option><option value="3y">3 yıllık</option><option value="5y">5 yıllık</option><option value="7y">7 yıllık</option><option value="10y">10 yıllık</option></select></div></div></div>
         <div class="chips" id="companyChips" aria-label="Grafikte gösterilecek şirketler"></div>
         <div class="chart-wrap"><svg class="chart" id="priceChart" viewBox="0 0 980 340" role="img" aria-label="Seçilen şirketlerin normalize edilmiş hisse performansı grafiği"><text x="20" y="45">Veri yükleniyor…</text></svg></div>
         <div id="chartReadout" class="chart-readout" hidden></div><div class="legend" id="legend"></div>
@@ -74,21 +74,49 @@
   const fmt=(n,d=2)=>Number(n).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
   const money=n=>'$'+fmt(n,2);const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function parseCSV(text){const lines=text.trim().split(/\r?\n/),head=lines.shift().split(',');return lines.map(line=>{const a=line.split(','),o={};head.forEach((k,i)=>o[k]=a[i]);return {stock_symbol:o.stock_symbol,date:o.date,close:+o.close,adj_close:+(o.adj_close||o.close),volume:+o.volume}}).filter(r=>r.stock_symbol&&r.date&&Number.isFinite(r.adj_close))}
-  function grouped(){bySymbol={};rows.forEach(r=>(bySymbol[r.stock_symbol]??=[]).push(r));allSymbols=Object.keys(bySymbol).sort()}
-  function latestDate(){return rows.reduce((m,r)=>r.date>m?r.date:m,'')}
-  function periodStart(){const p=$('period').value;if(p==='all')return rows.reduce((m,r)=>r.date<m?r.date:m,'9999-12-31');const last=new Date(latestDate()+'T00:00:00Z');if(p==='1y')last.setUTCFullYear(last.getUTCFullYear()-1);if(p==='5y')last.setUTCFullYear(last.getUTCFullYear()-5);return last.toISOString().slice(0,10)}
+  let tradingDates = [];
+  function grouped(){tradingDates = [...new Set(rows.map(row => row.date))].sort();bySymbol={};rows.forEach(r=>(bySymbol[r.stock_symbol]??=[]).push(r));allSymbols=Object.keys(bySymbol).sort()}
+  function latestDate(){
+    return allSymbols.map(symbol => bySymbol[symbol].at(-1).date).sort()[0];
+  }
+  function periodStart() {
+    const period = $('period').value;
+    if (period === '1d') return tradingDates[tradingDates.indexOf(latestDate()) - 1] || latestDate();
+    const cutoff = new Date(latestDate() + 'T00:00:00Z');
+    if (period === '1w') {
+      cutoff.setUTCDate(cutoff.getUTCDate() - 7);
+    } else {
+      const months = parseInt(period, 10) * (period.endsWith('y') ? 12 : 1);
+      const day = cutoff.getUTCDate();
+      cutoff.setUTCMonth(cutoff.getUTCMonth() - months, 1);
+      const monthEnd = new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth()+1, 0));
+      cutoff.setUTCDate(Math.min(day, monthEnd.getUTCDate()));
+    }
+    const date = cutoff.toISOString().slice(0, 10);
+    return tradingDates.find(day => day >= date);
+  }
   function monthlySeries(symbol,start){const m=new Map();for(const r of bySymbol[symbol]||[])if(r.date>=start)m.set(r.date.slice(0,7),r);return [...m.values()]}
   function setDataMessage(text,state){$('dataStatus').textContent=text;$('dataDot').className='dot '+(state||'')}
   function renderStats(){const dates=rows.map(r=>r.date).sort();$('companyCount').textContent=allSymbols.length;$('rowCount').textContent=rows.length.toLocaleString('tr-TR');$('dateRange').textContent=dates[0].slice(0,4)+'–'+dates[dates.length-1].slice(0,4);$('lastUpdated').textContent=dates[dates.length-1]}
   function renderChips(){const box=$('companyChips');box.replaceChildren();allSymbols.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=s;b.setAttribute('aria-pressed',String(['AAPL','MSFT','GOOGL','AMZN'].includes(s)));b.dataset.symbol=s;b.addEventListener('click',()=>{b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true'));renderCharts()});box.append(b)});const select=$('forecastSymbol');select.replaceChildren(...allSymbols.map(s=>{const o=document.createElement('option');o.value=s;o.textContent=`${s} · ${NAMES[s]||s}`;return o}));select.value='AAPL'}
   function selected(){return [...$('companyChips').querySelectorAll('[aria-pressed="true"]')].map(b=>b.dataset.symbol)}
   function addSvg(tag,attrs={},parent){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);if(parent)parent.append(el);return el}
-  function renderChart(){const svg=$('priceChart'),W=980,H=340,L=62,R=20,T=20,B=43,pw=W-L-R,ph=H-T-B,start=periodStart(),syms=selected();svg.replaceChildren();$('chartReadout').hidden=true;
-    const data=syms.map((s,idx)=>{const a=monthlySeries(s,start);if(!a.length)return null;const base=a[0].adj_close;return {s,idx,a:a.map(r=>({date:r.date,value:r.adj_close/base*100}))}}).filter(Boolean);
+  function renderChart(){const svg=$('priceChart'),W=980,H=340,L=62,R=20,T=20,B=43,pw=W-L-R,ph=H-T-B,start=periodStart(),end=latestDate(),syms=selected();svg.replaceChildren();$('chartReadout').hidden=true;
+    const data=syms.map((s,idx)=>{const a=bySymbol[s].filter(row => row.date >= start && row.date <= end);if(!a.length)return null;const base=a[0].adj_close;return {s,idx,a:a.map(r=>({date:r.date,value:r.adj_close/base*100}))}}).filter(Boolean);
     if(!data.length){addSvg('text',{x:30,y:60},svg).textContent='Grafik için en az bir şirket seçin.';$('legend').replaceChildren();return}
     const vals=data.flatMap(d=>d.a.map(x=>x.value)),lo=Math.min(...vals),hi=Math.max(...vals),pad=(hi-lo||1)*.08,min=lo-pad,max=hi+pad;
-    for(let i=0;i<5;i++){const y=T+ph*i/4,val=max-(max-min)*i/4;addSvg('line',{x1:L,y1:y,x2:W-R,y2:y,stroke:'#e7e8eb','stroke-width':1},svg);addSvg('text',{x:L-9,y:y+4,'text-anchor':'end'},svg).textContent=fmt(val,0)}
-    const timeStart=Date.parse(start+'T00:00:00Z'),timeEnd=Date.parse(latestDate()+'T00:00:00Z'),xFor=date=>L+pw*((Date.parse(date+'T00:00:00Z')-timeStart)/(timeEnd-timeStart||1));for(let i=0;i<4;i++){const when=new Date(timeStart+(timeEnd-timeStart)*i/3),x=L+pw*i/3;addSvg('line',{x1:x,y1:T+ph,x2:x,y2:T+ph+5,stroke:'#858892'},svg);addSvg('text',{x,y:H-10,'text-anchor':'middle'},svg).textContent=when.toISOString().slice(0,7)}
+    for(let i=0;i<5;i++){const y=T+ph*i/4,val=max-(max-min)*i/4;addSvg('line',{x1:L,y1:y,x2:W-R,y2:y,stroke:'#e7e8eb','stroke-width':1},svg);addSvg('text',{x:L-9,y:y+4,'text-anchor':'end'},svg).textContent=fmt(val,hi-lo<5 ? 2 : 0)}
+    const timeStart=Date.parse(start+'T00:00:00Z'),timeEnd=Date.parse(latestDate()+'T00:00:00Z'),xFor=date=>L+pw*((Date.parse(date+'T00:00:00Z')-timeStart)/(timeEnd-timeStart||1));
+    const days = tradingDates.filter(date => date >= start && date <= end);
+    const tickCount = Math.min(days.length, 4);
+    const short = ['1d','1w','1m'].includes($('period').value);
+    const dateLabel = new Intl.DateTimeFormat('tr-TR', short ? {day:'numeric',month:'short',timeZone:'UTC'} : {month:'short',year:'numeric',timeZone:'UTC'});
+    for (let i=0; i<tickCount; i++) {
+      const date = days[Math.round(i*(days.length-1)/Math.max(1,tickCount-1))];
+      const x = xFor(date);
+      addSvg('line',{x1:x,y1:T+ph,x2:x,y2:T+ph+5,stroke:'#858892'},svg);
+      addSvg('text',{x,y:H-10,'text-anchor':i===tickCount-1?'end':'middle'},svg).textContent = dateLabel.format(new Date(date+'T00:00:00Z'));
+    }
     data.forEach(d=>{const pts=d.a.map(p=>`${xFor(p.date).toFixed(1)},${(T+ph-(p.value-min)/(max-min)*ph).toFixed(1)}`).join(' ');addSvg('polyline',{points:pts,fill:'none',stroke:COLORS[d.idx%COLORS.length],'stroke-width':2.7,'stroke-linecap':'round','stroke-linejoin':'round'},svg);const last=d.a[d.a.length-1],x=xFor(last.date),y=T+ph-(last.value-min)/(max-min)*ph,c=addSvg('circle',{cx:x,cy:y,r:4.5,fill:COLORS[d.idx%COLORS.length],stroke:'#fff','stroke-width':2},svg);addSvg('title',{},c).textContent=`${d.s} · ${last.date} · ${fmt(last.value,1)}`});
     const panel = $('chartReadout');
     const hint = 'Tarihi ve endeks değerini görmek için grafikte gezinin veya bir noktaya dokunun.';
@@ -136,7 +164,7 @@
       panel.textContent = hint;
     });
   }
-  function renderSummary(){const start=periodStart(),tb=$('summaryRows');tb.replaceChildren();const list=allSymbols.map((s,i)=>{const a=(bySymbol[s]||[]).filter(r=>r.date>=start);if(a.length<1)return null;const first=a[0],last=a[a.length-1];return {s,i,first,last,ret:(last.adj_close/first.adj_close-1)*100}}).filter(Boolean).sort((a,b)=>b.ret-a.ret);list.forEach(d=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(NAMES[d.s]||d.s)}</td><td>${esc(d.s)}</td><td>${money(d.last.adj_close)}</td><td class="${d.ret>=0?'pos':'neg'}">${d.ret>=0?'+':''}${fmt(d.ret,1)}%</td>`;tb.append(tr)})}
+  function renderSummary(){const start=periodStart(),end=latestDate(),tb=$('summaryRows');tb.replaceChildren();const list=allSymbols.map((s,i)=>{const a=(bySymbol[s]||[]).filter(r=>r.date>=start && r.date<=end);if(a.length<1)return null;const first=a[0],last=a[a.length-1];return {s,i,first,last,ret:(last.adj_close/first.adj_close-1)*100}}).filter(Boolean).sort((a,b)=>b.ret-a.ret);list.forEach(d=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(NAMES[d.s]||d.s)}</td><td>${esc(d.s)}</td><td>${money(d.last.adj_close)}</td><td class="${d.ret>=0?'pos':'neg'}">${d.ret>=0?'+':''}${fmt(d.ret,1)}%</td>`;tb.append(tr)})}
   function pearson(a,b){const pairs=[];for(const [k,v] of a)if(b.has(k))pairs.push([v,b.get(k)]);if(pairs.length<2)return NaN;const mx=pairs.reduce((s,p)=>s+p[0],0)/pairs.length,my=pairs.reduce((s,p)=>s+p[1],0)/pairs.length;let n=0,dx=0,dy=0;pairs.forEach(([x,y])=>{n+=(x-mx)*(y-my);dx+=(x-mx)**2;dy+=(y-my)**2});return dx&&dy?n/Math.sqrt(dx*dy):NaN}
   function monthlyReturns(symbol){const a=monthlySeries(symbol,'0000-00');const m=new Map();for(let i=1;i<a.length;i++)m.set(a[i].date.slice(0,7),a[i].adj_close/a[i-1].adj_close-1);return m}
   function renderCorrelation(){const box=$('correlationTable'),rets=Object.fromEntries(allSymbols.map(s=>[s,monthlyReturns(s)]));let h='<table class="matrix"><thead><tr><th scope="col">Sembol</th>'+allSymbols.map(s=>`<th scope="col">${esc(s)}</th>`).join('')+'</tr></thead><tbody>';allSymbols.forEach(a=>{h+=`<tr><th scope="row">${esc(a)}</th>`;allSymbols.forEach(b=>{const v=pearson(rets[a],rets[b]);const n=Number.isFinite(v)?v:0,alpha=Math.min(.5,Math.abs(n)*.43),bg=n>=0?`rgba(22,123,97,${alpha})`:`rgba(166,30,43,${alpha})`;h+=`<td style="background:${bg}" aria-label="${esc(a)} ve ${esc(b)} korelasyonu ${fmt(n,2)}">${fmt(n,2)}</td>`});h+='</tr>'});box.innerHTML=h+'</tbody></table>'}
